@@ -4,7 +4,13 @@ pub mod yarrow {
     include!(concat!(env!("OUT_DIR"), "/yarrow.rs"));
 }
 
+use serde;
+use serde::{Deserialize, Serialize};
+
 use prost::Message;
+//mod models;
+
+//use models::Nature;
 
 // useful tutorial for proto over ffi here:
 // https://github.com/mozilla/application-services/blob/master/docs/howtos/passing-protobuf-data-over-ffi.md

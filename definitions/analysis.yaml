@@ -1,0 +1,141 @@
+openapi: 3.0.0
+info:
+  title: 'Differential Privacy'
+  description: 'Represent differentially private analyses'
+  version: 0.1.0
+paths: {}
+
+components:
+  schemas:
+
+    Analysis:
+      type: object
+      properties:
+        graph:
+          $ref: '#/components/schemas/Graph'
+        privacy_definition:
+          $ref: '#/components/schemas/PrivacyDefinition'
+      required:
+        - graph
+        - privacy_definition
+
+    PrivacyDefinition:
+      type: object
+      properties:
+        group_size:
+          type: integer
+        distance:
+          type: string
+          enum:
+            - PURE
+            - APPROXIMATE
+            - RENYI
+            - CONCENTRATED
+            - F
+        neighboring:
+          type: string
+          enum:
+            - SUBSTITUTE
+            - ADD_REMOVE
+      required:
+        - group_size
+        - distance
+        - neighboring
+
+
+    PrivacyUsage:
+      type: object
+      oneOf:
+        - $ref: '#/components/schemas/PrivacyTypePure'
+        - $ref: '#/components/schemas/PrivacyTypeApproximate'
+
+    PrivacyTypePure:
+      type: object
+      properties:
+        epsilon:
+          type: number
+
+    PrivacyTypeApproximate:
+      type: object
+      properties:
+        epsilon:
+          type: number
+        delta:
+          type: number
+
+    Nature:
+      type: string
+      enum:
+        - CONTINUOUS
+        - CATEGORICAL
+
+    Graph:
+      type: object
+      additionalProperties:
+        $ref: '#/components/schemas/Component'
+
+    Component:
+      type: object
+      properties:
+        arguments:
+          $ref: '#/components/schemas/Arguments'
+        value:
+          oneOf:
+            - $ref: '#/components/schemas/Literal'
+            - $ref: '#/components/schemas/Add'
+            - $ref: '#/components/schemas/DPMean'
+            - $ref: '#/components/schemas/DPVariance'
+            - $ref: '#/components/schemas/DataSource'
+      required:
+        - value
+
+    Arguments:
+      type: object
+      additionalProperties:
+        $ref: '#/components/schemas/Argument'
+
+    Argument:
+      type: object
+      properties:
+        source_node_id:
+          type: string
+        source_field:
+          type: string
+      required:
+        - source_node_id
+        - source_field
+
+    Add:
+      type: object
+
+    Literal:
+      type: object
+
+    DataSource:
+      type: object
+      properties:
+        dataset_id:
+          type: string
+        column_id:
+          type: string
+        datatype:
+          $ref: '#/components/schemas/Nature'
+      required:
+        - dataset_id
+        - column_id
+
+    DPMean:
+      type: object
+      properties:
+        privacy:
+          $ref: '#/components/schemas/PrivacyUsage'
+        implementation:
+          type: string
+          
+    DPVariance:
+      type: object
+      properties:
+        privacy:
+          $ref: '#/components/schemas/PrivacyUsage'
+        implementation:
+          type: string

@@ -1,14 +1,16 @@
+#[macro_use]
+extern crate serde_derive;
+
+extern crate serde;
+extern crate serde_json;
 
 // include protobuf-generated traits
 pub mod yarrow {
     include!(concat!(env!("OUT_DIR"), "/yarrow.rs"));
 }
 
-use serde;
-use serde::{Deserialize, Serialize};
-
 use prost::Message;
-//mod models;
+pub mod models;
 
 //use models::Nature;
 
@@ -43,6 +45,19 @@ fn buffer_to_ptr<T>(buffer: T) -> ffi_support::ByteBuffer
 struct ByteBuffer {
     len: i64,
     data: *mut u8,
+}
+
+#[no_mangle]
+pub extern "C" fn validate_analysis_openapi(
+    analysis_ptr: *const u8, analysis_length: i32
+) -> ffi_support::ByteBuffer {
+    let analysis_buffer = unsafe {ptr_to_buffer(analysis_ptr, analysis_length)};
+    let analysis_string = std::str::from_utf8(analysis_buffer).unwrap();
+    let analysis: models::Analysis = serde_json::from_str(analysis_string).unwrap();
+    println!("{:?}", analysis);
+
+    let analysis_string_output: String = serde_json::to_string(&analysis).unwrap();
+    ffi_support::ByteBuffer::from_vec(analysis_string_output.as_bytes().to_owned())
 }
 
 #[no_mangle]

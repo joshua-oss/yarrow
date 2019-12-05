@@ -45,9 +45,9 @@ components:
 
     PrivacyUsage:
       type: object
-      oneOf:
-        - $ref: '#/components/schemas/PrivacyTypePure'
-        - $ref: '#/components/schemas/PrivacyTypeApproximate'
+      # oneOf:
+      #   - $ref: '#/components/schemas/PrivacyTypePure'
+      #   - $ref: '#/components/schemas/PrivacyTypeApproximate'
 
     PrivacyTypePure:
       type: object
@@ -79,15 +79,15 @@ components:
       properties:
         arguments:
           $ref: '#/components/schemas/Arguments'
-        value:
-          oneOf:
-            - $ref: '#/components/schemas/Literal'
-            - $ref: '#/components/schemas/Add'
-            - $ref: '#/components/schemas/DPMean'
-            - $ref: '#/components/schemas/DPVariance'
-            - $ref: '#/components/schemas/DataSource'
-      required:
-        - value
+        # value:
+        #   oneOf:
+        #     - $ref: '#/components/schemas/Literal'
+        #     - $ref: '#/components/schemas/Add'
+        #     - $ref: '#/components/schemas/DPMean'
+        #     - $ref: '#/components/schemas/DPVariance'
+        #     - $ref: '#/components/schemas/DataSource'
+      # required:
+      #   - value
 
     Arguments:
       type: object

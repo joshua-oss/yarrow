@@ -47,3 +47,5 @@ ByteBuffer to_accuracy(const uint8_t *analysis_ptr,
                        int32_t release_length);
 
 ByteBuffer validate_analysis(const uint8_t *analysis_ptr, int32_t analysis_length);
+
+ByteBuffer validate_analysis_openapi(const uint8_t *analysis_ptr, int32_t analysis_length);

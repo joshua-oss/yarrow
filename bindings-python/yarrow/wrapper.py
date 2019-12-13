@@ -47,7 +47,7 @@ class LibraryWrapper(object):
 
     def compute_release(self, dataset, analysis, release):
 
-        byte_buffer = lib_runtime.release(
+        byte_buffer = lib_runtime.compute_release(
             *_serialize_proto(dataset, ffi_runtime),
             *_serialize_proto(analysis, ffi_runtime),
             *_serialize_proto(release, ffi_runtime)

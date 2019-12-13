@@ -1,13 +1,18 @@
+// INTERNAL IMPORTS
 extern crate yarrow_validator;
-use yarrow_validator::yarrow;
-
-use ndarray::prelude::*;
-
-use std::collections::{HashMap, HashSet, VecDeque};
-use std::vec::Vec;
-use std::iter::FromIterator;
-
+use yarrow_validator::{
+    yarrow,
+    base::get_sinks,
+    base::get_release_nodes
+};
 use crate::components;
+
+// STANDARD LIB IMPORTS
+use std::collections::{HashMap, HashSet};
+use std::vec::Vec;
+
+// EXTERNAL IMPORTS
+use ndarray::prelude::*;
 
 // equivalent to proto ArrayNd
 #[derive(Debug)]
@@ -27,73 +32,16 @@ pub type GraphEvaluation = HashMap<u32, NodeEvaluation>;
 // arguments to a node prior to evaluation
 pub type NodeArguments<'a> = HashMap<String, &'a FieldEvaluation>;
 
-pub fn get_arguments<'a>(component: &yarrow::Component, graph_evaluation: &'a GraphEvaluation) -> NodeArguments<'a> {
-    let mut arguments = NodeArguments::new();
-    component.arguments.iter().for_each(|(field_id, field)| {
-        let evaluation: &'a FieldEvaluation = graph_evaluation.get(&field.source_node_id).unwrap().get(&field.source_field).unwrap().to_owned();
-        arguments.insert(field_id.to_owned(), evaluation);
-    });
-    arguments
+// implemented on each yarrow component variant
+trait Evaluable {
+    fn evaluate(&self, arguments: &NodeArguments) -> NodeEvaluation;
 }
 
-pub fn get_release_nodes(analysis: &yarrow::Analysis) -> HashSet<u32> {
-
-    let mut release_node_ids = HashSet::<u32>::new();
-    // assume sinks are private
-    let sink_node_ids = get_sinks(analysis);
-//    println!("sink nodes: {:?}", sink_node_ids);
-
-    // traverse back through arguments until privatizers found
-    let mut node_queue = VecDeque::from_iter(sink_node_ids.iter());
-
-    let graph: &HashMap<u32, yarrow::Component> = &analysis.graph;
-
-    while !node_queue.is_empty() {
-        let node_id = node_queue.pop_front().unwrap();
-        let component = graph.get(&node_id).unwrap();
-
-        if is_privatizer(&component) {
-            release_node_ids.insert(*node_id);
-        }
-        else {
-            for field in component.arguments.values() {
-                node_queue.push_back(&field.source_node_id);
-            }
-        }
-    }
-
-    return release_node_ids;
-}
-
-pub fn get_sinks(analysis: &yarrow::Analysis) -> HashSet<u32> {
-    let mut node_ids = HashSet::<u32>::new();
-    // start with all nodes
-    for node_id in analysis.graph.keys() {
-        node_ids.insert(*node_id);
-    }
-
-    // remove nodes that are referenced in arguments
-    for node in analysis.graph.values() {
-        for field in node.arguments.values() {
-            node_ids.remove(&field.source_node_id);
-        }
-    }
-
-    // move to heap, transfer ownership to caller
-    return node_ids.to_owned();
-}
-
-pub fn is_privatizer(component: &yarrow::Component) -> bool {
-    use yarrow::component::Value::*;
-    match component.to_owned().value.unwrap() {
-        Dpmean(_x) => true,
-        _ => false
-    }
-}
-
-pub fn execute_graph(analysis: &yarrow::Analysis,
-                     release: &yarrow::Release,
-                     dataset: &yarrow::Dataset) -> yarrow::Release {
+pub fn compute_release(
+    analysis: &yarrow::Analysis,
+    release: &yarrow::Release,
+    dataset: &yarrow::Dataset
+) -> yarrow::Release {
 
     let node_ids_release: HashSet<u32> = get_release_nodes(&analysis);
 
@@ -152,27 +100,27 @@ pub fn execute_graph(analysis: &yarrow::Analysis,
     evaluations_to_release(&evaluations)
 }
 
-pub fn execute_component(component: &yarrow::Component,
-                         evaluations: &GraphEvaluation,
-                         dataset: &yarrow::Dataset) -> NodeEvaluation {
-
+pub fn execute_component(
+    component: &yarrow::Component,
+    evaluations: &GraphEvaluation,
+    dataset: &yarrow::Dataset
+) -> NodeEvaluation {
     let arguments = get_arguments(&component, &evaluations);
+    let inner: &dyn Evaluable = component.to_owned().value.unwrap();
+    inner.evaluate(&arguments)
+}
 
-    match component.to_owned().value.unwrap() {
-        yarrow::component::Value::Literal(x) => components::component_literal(&x),
-        yarrow::component::Value::Datasource(x) => components::component_datasource(&x, &dataset, &arguments),
-        yarrow::component::Value::Add(x) => components::component_add(&x, &arguments),
-        yarrow::component::Value::Subtract(x) => components::component_subtract(&x, &arguments),
-        yarrow::component::Value::Divide(x) => components::component_divide(&x, &arguments),
-        yarrow::component::Value::Multiply(x) => components::component_multiply(&x, &arguments),
-        yarrow::component::Value::Power(x) => components::component_power(&x, &arguments),
-        yarrow::component::Value::Negate(x) => components::component_negate(&x, &arguments),
-        yarrow::component::Value::Dpmean(x) => components::component_dp_mean(&x, &arguments),
-        yarrow::component::Value::Dpvariance(x) => components::component_dp_variance(&x, &arguments),
-        yarrow::component::Value::Dpmomentraw(x) => components::component_dp_moment_raw(&x, &arguments),
-        yarrow::component::Value::Dpcovariance(x) => components::component_dp_covariance(&x, &arguments),
-        _ => NodeEvaluation::new()
-    }
+pub fn get_arguments<'a>(
+    component: &yarrow::Component,
+    graph_evaluation: &'a GraphEvaluation
+) -> NodeArguments<'a> {
+
+    let mut arguments = NodeArguments::new();
+    component.arguments.iter().for_each(|(field_id, field)| {
+        let evaluation: &'a FieldEvaluation = graph_evaluation.get(&field.source_node_id).unwrap().get(&field.source_field).unwrap().to_owned();
+        arguments.insert(field_id.to_owned(), evaluation);
+    });
+    arguments
 }
 
 pub fn get_f64(arguments: &NodeArguments, column: &str) -> f64 {

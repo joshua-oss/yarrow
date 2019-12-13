@@ -1,14 +1,14 @@
+use prost::Message;
+pub mod base;
 
 // include protobuf-generated traits
 pub mod yarrow {
     include!(concat!(env!("OUT_DIR"), "/yarrow.rs"));
 }
 
-use prost::Message;
-
 // useful tutorial for proto over ffi here:
 // https://github.com/mozilla/application-services/blob/master/docs/howtos/passing-protobuf-data-over-ffi.md
-unsafe fn ptr_to_buffer<'a>(data: *const u8, len: i32) -> &'a [u8] {
+pub unsafe fn ptr_to_buffer<'a>(data: *const u8, len: i32) -> &'a [u8] {
     assert!(len >= 0, "Bad buffer len: {}", len);
     if len == 0 {
         // This will still fail, but as a bad protobuf format.
@@ -19,7 +19,7 @@ unsafe fn ptr_to_buffer<'a>(data: *const u8, len: i32) -> &'a [u8] {
     }
 }
 
-fn buffer_to_ptr<T>(buffer: T) -> ffi_support::ByteBuffer
+pub fn buffer_to_ptr<T>(buffer: T) -> ffi_support::ByteBuffer
     where T: Message {
     let mut out_buffer = Vec::new();
     match prost::Message::encode(&buffer, &mut out_buffer) {
@@ -47,7 +47,7 @@ pub extern "C" fn validate_analysis(
     let analysis_buffer = unsafe {ptr_to_buffer(analysis_ptr, analysis_length)};
     let analysis: yarrow::Analysis = prost::Message::decode(analysis_buffer).unwrap();
 
-    let validation_response: yarrow::Validated = yarrow::Validated {valid: true};
+    let validation_response: yarrow::Validated = base::validate_analysis(analysis);
     buffer_to_ptr(validation_response)
 }
 
@@ -63,7 +63,7 @@ pub extern "C" fn compute_privacy(
     let release_buffer = unsafe {ptr_to_buffer(release_ptr, release_length)};
     let release: yarrow::Release = prost::Message::decode(release_buffer).unwrap();
 
-    let privacy_usage_response: yarrow::PrivacyUsage = yarrow::PrivacyUsage {};
+    let privacy_usage_response: yarrow::PrivacyUsage = base::compute_privacy(analysis, release);
     buffer_to_ptr(privacy_usage_response)
 }
 
@@ -78,9 +78,7 @@ pub extern "C" fn generate_report(
     let release_buffer = unsafe {ptr_to_buffer(release_ptr, release_length)};
     let release: yarrow::Release = prost::Message::decode(release_buffer).unwrap();
 
-    let report_response: yarrow::Report = yarrow::Report {
-        value: "{\"key\": \"value\"}".to_owned()
-    };
+    let report_response: yarrow::Report = base::generate_report(analysis, release);
     buffer_to_ptr(report_response)
 }
 
@@ -99,7 +97,7 @@ pub extern "C" fn infer_constraints(
     let constraints_buffer = unsafe {ptr_to_buffer(constraints_ptr, constraints_length)};
     let constraints: yarrow::Constraints = prost::Message::decode(constraints_buffer).unwrap();
 
-    let analysis_response: yarrow::Analysis = analysis;
+    let analysis_response: yarrow::Analysis = base::infer_constraints(analysis, release, constraints);
     buffer_to_ptr(analysis_response)
 }
 
@@ -114,7 +112,7 @@ pub extern "C" fn compute_sensitivities(
     let release_buffer = unsafe { ptr_to_buffer(release_ptr, release_length) };
     let release: yarrow::Release = prost::Message::decode(release_buffer).unwrap();
 
-    let sensitivities_response: yarrow::Sensitivities = yarrow::Sensitivities {};
+    let sensitivities_response: yarrow::Sensitivities = base::compute_sensitivities(analysis, release);
     buffer_to_ptr(sensitivities_response)
 }
 
@@ -134,7 +132,7 @@ pub extern "C" fn from_accuracy(
     let accuracies_buffer = unsafe { ptr_to_buffer(accuracy_ptr, accuracy_length) };
     let accuracies: yarrow::Accuracies = prost::Message::decode(accuracies_buffer).unwrap();
 
-    let privacy_usage_node_response: yarrow::PrivacyUsageNode = yarrow::PrivacyUsageNode {};
+    let privacy_usage_node_response: yarrow::PrivacyUsageNode = base::from_accuracy(analysis, release, accuracies);
     buffer_to_ptr(privacy_usage_node_response)
 }
 
@@ -150,6 +148,6 @@ pub extern "C" fn to_accuracy(
     let release_buffer = unsafe { ptr_to_buffer(release_ptr, release_length) };
     let release: yarrow::Release = prost::Message::decode(release_buffer).unwrap();
 
-    let accuracies_response: yarrow::Accuracies = yarrow::Accuracies {};
+    let accuracies_response: yarrow::Accuracies = base::to_accuracy(analysis, release);
     buffer_to_ptr(accuracies_response)
 }

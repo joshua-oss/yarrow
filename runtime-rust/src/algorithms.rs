@@ -1,6 +1,8 @@
 use ndarray::prelude::*;
 use ndarray_stats::SummaryStatisticsExt;
 use ndarray::Zip;
+use std::collections::HashMap;
+use std::string::String;
 
 use crate::utilities::noise;
 use crate::utilities::nonprivate_functions;
@@ -82,17 +84,23 @@ pub fn dp_covariance(
 pub fn dp_histogram_laplace(
     epsilon: f64, data: ArrayD<f64>,
     minimum: f64, maximum: f64,
-    num_bins: usize, inclusive_left: bool) -> Array1::<f64> {
+    num_bins: usize, inclusive_left: bool) -> HashMap::<String, f64> {
 
     // set sensitivity
-    let sensitivity: f64 = 1.0;
+    // NOTE: The sensitivity is set at 2 because we consider releasing the entire vector of counts at once.
+    //       Changing one data point can change the counts of two bins, each by at most one.
+    //       Thus, the maximum difference in l1 norm is 2.
+    let sensitivity: f64 = 2.0;
+
+    // clamp data
+    let clamped_data: ArrayD<f64> = data.mapv(|v| num::clamp(v, minimum, maximum));
 
     // calculate non-private histogram
-    let mut hist = nonprivate_functions::histogram(data, minimum, maximum, num_bins, inclusive_left);
+    let mut hist = nonprivate_functions::histogram(clamped_data, minimum, maximum, num_bins, inclusive_left);
 
     // add laplace noise to each bin
-    for i in 0..hist.len() {
-        hist[i] = hist[i] + noise::sample_laplace(0., sensitivity / epsilon);
+    for (bin, count) in hist.iter_mut() {
+        *count += noise::sample_laplace(0., sensitivity / epsilon);
     }
 
     // return DP histogram

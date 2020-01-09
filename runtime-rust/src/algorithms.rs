@@ -3,6 +3,7 @@ use ndarray_stats::SummaryStatisticsExt;
 use ndarray::Zip;
 
 use crate::utilities::noise;
+use crate::utilities::nonprivate_functions;
 
 pub fn dp_mean_laplace(
     epsilon: f64, num_records: f64,
@@ -78,9 +79,22 @@ pub fn dp_covariance(
     covariance + noise
 }
 
-//pub fn dp_histogram(
-//    epsilon: f64, num_records: f64,
-//    data_x: ArrayD<f64>
-//) -> u64 {
-//
-//}
+pub fn dp_histogram_laplace(
+    epsilon: f64, data: ArrayD<f64>,
+    minimum: f64, maximum: f64,
+    num_bins: usize, inclusive_left: bool) -> Array1::<f64> {
+
+    // set sensitivity
+    let sensitivity: f64 = 1.0;
+
+    // calculate non-private histogram
+    let mut hist = nonprivate_functions::histogram(data, minimum, maximum, num_bins, inclusive_left);
+
+    // add laplace noise to each bin
+    for i in 0..hist.len() {
+        hist[i] = hist[i] + noise::sample_laplace(0., sensitivity / epsilon);
+    }
+
+    // return DP histogram
+    return hist;
+}

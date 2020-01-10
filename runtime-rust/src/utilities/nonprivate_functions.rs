@@ -53,7 +53,13 @@ pub fn histogram(data: ArrayD<f64>, min: f64, max: f64, num_bins: usize, inclusi
     // for each element in the data, increment correct bin
     for elem in data.iter() {
         for i in 0..(edges.len()-1) {
-            if
+            // check if elem is out of given bounds
+            // NOTE: this probably shouldn't be happening, given that the histogram is
+            //       likely getting min/max from the data bounds,
+            //       so the data should be clamped to the [min,max] interval already
+            if elem < &min || elem > &max {
+                break
+            } else if
             // element is smaller than right bin edge
             elem < &edges[i+1] ||
             // element is equal to the right bin edge and we are building our histogram to be 'right-edge inclusive'

@@ -129,7 +129,7 @@ pub fn dp_histogram_stability(
     for (_, count) in hist.iter_mut() {
         if *count != 0.0 {
             *count += noise::sample_laplace(0., sensitivity / epsilon);
-            if *count < 2.0*(2.0 / delta).ln() + 1.0 {
+            if *count < 2.0*(2.0 / delta).ln()/epsilon + 1.0 {
                 *count = 0.0;
             }
         }
